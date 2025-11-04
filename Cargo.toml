@@ -1,0 +1,35 @@
+[package]
+name = "secure-rust-api"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "secure_rust_api"
+path = "src/lib.rs"
+
+[dependencies]
+actix-web = "4.9"
+actix-cors = "0.7"
+tokio = { version = "1.41", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+jsonwebtoken = "9.3"
+argon2 = { version = "0.5", features = ["std"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
+dotenv = "0.15"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.11", features = ["v4", "serde"] }
+thiserror = "1.0"
+futures-util = "0.3.31"
+utoipa = { version = "5.4.0", features = ["actix_extras", "chrono", "uuid"] }
+utoipa-swagger-ui = { version = "9.0.2", features = ["actix-web"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json"] }
+tracing-actix-web = "0.7.19"
+sled = "0.34.7"
+bincode = "2.0.1"
+governor = { version = "0.10.1", features = ["std", "dashmap"] }
+dashmap = "6.1.0"
+
+[dev-dependencies]
+actix-rt = "2.11.0"
