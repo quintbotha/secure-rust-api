@@ -1,6 +1,22 @@
 # Secure REST API in Rust
 
+[![CI](https://github.com/quintbotha/secure-rust-api/actions/workflows/ci.yml/badge.svg)](https://github.com/quintbotha/secure-rust-api/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
+
 A production-ready, secure REST API built with Rust, featuring JWT authentication, password hashing with Argon2, and CORS support.
+
+## ⚠️ Disclaimer
+
+**THIS SOFTWARE IS PROVIDED "AS IS" FOR EDUCATIONAL AND DEMONSTRATION PURPOSES ONLY.**
+
+This project is a reference implementation and should not be used directly in production without:
+- Proper security auditing
+- Thorough testing in your specific environment
+- Additional security hardening based on your requirements
+- Regular security updates and maintenance
+
+**The author assumes no liability for any damages, security breaches, or data loss that may occur from using this software. Use at your own risk.**
 
 ## 🔐 Security Features
 
@@ -354,11 +370,19 @@ cargo test
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+**Key Points:**
+- ✅ Free to use, modify, and distribute
+- ✅ Commercial use allowed
+- ❌ No warranty provided
+- ❌ Author not liable for damages
 
 ## 🤝 Contributing
 
 Contributions welcome! Please feel free to submit a Pull Request.
+
+By contributing, you agree that your contributions will be licensed under the MIT License.
 
 ## 📚 Resources
 
