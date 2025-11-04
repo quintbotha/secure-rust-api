@@ -27,7 +27,7 @@ This project is a reference implementation and should not be used directly in pr
 - **Secure Headers**: HTTP security headers implementation
 - **Token Expiration**: Automatic token expiration (24 hours)
 - **Environment Variables**: Sensitive configuration via environment variables
-- **Persistent Storage**: Sled embedded database for user data
+- **Persistent Storage**: Redb embedded database for user data
 
 ## 🚀 Tech Stack
 
@@ -38,7 +38,7 @@ This project is a reference implementation and should not be used directly in pr
 - **serde**: Serialization/deserialization
 - **chrono**: Date and time handling
 - **dotenvy**: Environment variable management
-- **sled**: Embedded database
+- **redb**: High-performance embedded database
 - **governor**: Rate limiting
 
 ## 📁 Project Structure

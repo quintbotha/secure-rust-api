@@ -1,45 +1,10 @@
 use crate::db::Database;
 use crate::models::user::User;
-use bincode::{Decode, Encode};
-use std::str;
+use redb::{ReadableDatabase, ReadableTable, TableDefinition};
 use tracing::info;
 
-const USERS_TREE: &str = "users";
-const EMAIL_INDEX_TREE: &str = "email_index";
-
-#[derive(Debug, Encode, Decode)]
-pub struct StoredUser {
-    pub id: String,
-    pub username: String,
-    pub email: String,
-    pub password_hash: String,
-    pub created_at: i64, // Store as timestamp
-}
-
-impl From<User> for StoredUser {
-    fn from(user: User) -> Self {
-        StoredUser {
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            password_hash: user.password_hash,
-            created_at: user.created_at.timestamp(),
-        }
-    }
-}
-
-impl From<StoredUser> for User {
-    fn from(stored: StoredUser) -> Self {
-        User {
-            id: stored.id,
-            username: stored.username,
-            email: stored.email,
-            password_hash: stored.password_hash,
-            created_at: chrono::DateTime::from_timestamp(stored.created_at, 0)
-                .unwrap_or_else(chrono::Utc::now),
-        }
-    }
-}
+const USERS_TABLE: TableDefinition<&str, &str> = TableDefinition::new("users");
+const EMAIL_INDEX_TABLE: TableDefinition<&str, &str> = TableDefinition::new("email_index");
 
 pub struct UserRepository {
     db: Database,
@@ -50,39 +15,81 @@ impl UserRepository {
         UserRepository { db }
     }
 
+    fn serialize_user(user: &User) -> String {
+        serde_json::json!({
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "password_hash": user.password_hash,
+            "created_at": user.created_at.timestamp()
+        })
+        .to_string()
+    }
+
+    fn deserialize_user(data: &str) -> Result<User, String> {
+        let json: serde_json::Value =
+            serde_json::from_str(data).map_err(|e| format!("Failed to parse JSON: {}", e))?;
+
+        Ok(User {
+            id: json["id"]
+                .as_str()
+                .ok_or("Missing id")?
+                .to_string(),
+            username: json["username"]
+                .as_str()
+                .ok_or("Missing username")?
+                .to_string(),
+            email: json["email"]
+                .as_str()
+                .ok_or("Missing email")?
+                .to_string(),
+            password_hash: json["password_hash"]
+                .as_str()
+                .ok_or("Missing password_hash")?
+                .to_string(),
+            created_at: chrono::DateTime::from_timestamp(
+                json["created_at"].as_i64().ok_or("Missing created_at")?,
+                0,
+            )
+            .unwrap_or_else(chrono::Utc::now),
+        })
+    }
+
     pub async fn create(&self, user: User) -> Result<User, String> {
-        let users_tree = self
+        let write_txn = self
             .db
             .db
-            .open_tree(USERS_TREE)
-            .map_err(|e| format!("Failed to open users tree: {}", e))?;
+            .begin_write()
+            .map_err(|e| format!("Failed to begin transaction: {}", e))?;
 
-        let email_index = self
-            .db
-            .db
-            .open_tree(EMAIL_INDEX_TREE)
-            .map_err(|e| format!("Failed to open email index: {}", e))?;
-
-        // Check if email already exists
-        if email_index
-            .contains_key(user.email.as_bytes())
-            .map_err(|e| e.to_string())?
         {
-            return Err("Email already exists".to_string());
+            let mut users_table = write_txn
+                .open_table(USERS_TABLE)
+                .map_err(|e| format!("Failed to open users table: {}", e))?;
+
+            let mut email_index = write_txn
+                .open_table(EMAIL_INDEX_TABLE)
+                .map_err(|e| format!("Failed to open email index: {}", e))?;
+
+            // Check if email already exists
+            if email_index.get(user.email.as_str()).is_ok_and(|v| v.is_some()) {
+                return Err("Email already exists".to_string());
+            }
+
+            let serialized = Self::serialize_user(&user);
+
+            users_table
+                .insert(user.id.as_str(), serialized.as_str())
+                .map_err(|e| format!("Failed to insert user: {}", e))?;
+
+            email_index
+                .insert(user.email.as_str(), user.id.as_str())
+                .map_err(|e| format!("Failed to create email index: {}", e))?;
         }
 
-        let stored_user = StoredUser::from(user.clone());
-        let encoded = bincode::encode_to_vec(&stored_user, bincode::config::standard())
-            .map_err(|e| format!("Failed to encode user: {}", e))?;
-
-        users_tree
-            .insert(user.id.as_bytes(), encoded.as_slice())
-            .map_err(|e| format!("Failed to insert user: {}", e))?;
-
-        // Create email index
-        email_index
-            .insert(user.email.as_bytes(), user.id.as_bytes())
-            .map_err(|e| format!("Failed to create email index: {}", e))?;
+        write_txn
+            .commit()
+            .map_err(|e| format!("Failed to commit transaction: {}", e))?;
 
         info!(user_id = %user.id, email = %user.email, "User created in database");
 
@@ -90,68 +97,75 @@ impl UserRepository {
     }
 
     pub async fn get_by_id(&self, id: &str) -> Result<Option<User>, String> {
-        let users_tree = self
+        let read_txn = self
             .db
             .db
-            .open_tree(USERS_TREE)
-            .map_err(|e| format!("Failed to open users tree: {}", e))?;
+            .begin_read()
+            .map_err(|e| format!("Failed to begin read transaction: {}", e))?;
 
-        match users_tree
-            .get(id.as_bytes())
-            .map_err(|e| format!("Failed to get user: {}", e))?
-        {
-            Some(data) => {
-                let (stored_user, _): (StoredUser, usize) =
-                    bincode::decode_from_slice(&data, bincode::config::standard())
-                        .map_err(|e| format!("Failed to decode user: {}", e))?;
-                Ok(Some(User::from(stored_user)))
+        let users_table = read_txn
+            .open_table(USERS_TABLE)
+            .map_err(|e| format!("Failed to open users table: {}", e))?;
+
+        match users_table.get(id) {
+            Ok(Some(data)) => {
+                let user = Self::deserialize_user(data.value())?;
+                Ok(Some(user))
             }
-            None => Ok(None),
+            Ok(None) => Ok(None),
+            Err(e) => Err(format!("Failed to get user: {}", e)),
         }
     }
 
     pub async fn get_by_email(&self, email: &str) -> Result<Option<User>, String> {
-        let email_index = self
+        let read_txn = self
             .db
             .db
-            .open_tree(EMAIL_INDEX_TREE)
+            .begin_read()
+            .map_err(|e| format!("Failed to begin read transaction: {}", e))?;
+
+        let email_index = read_txn
+            .open_table(EMAIL_INDEX_TABLE)
             .map_err(|e| format!("Failed to open email index: {}", e))?;
 
-        match email_index
-            .get(email.as_bytes())
-            .map_err(|e| format!("Failed to get email index: {}", e))?
-        {
-            Some(user_id) => {
-                let id = str::from_utf8(&user_id).map_err(|e| format!("Invalid user ID: {}", e))?;
+        match email_index.get(email) {
+            Ok(Some(user_id)) => {
+                let id = user_id.value();
                 self.get_by_id(id).await
             }
-            None => Ok(None),
+            Ok(None) => Ok(None),
+            Err(e) => Err(format!("Failed to get email index: {}", e)),
         }
     }
 
     #[allow(dead_code)]
     pub async fn update(&self, user: User) -> Result<User, String> {
-        let users_tree = self
+        let write_txn = self
             .db
             .db
-            .open_tree(USERS_TREE)
-            .map_err(|e| format!("Failed to open users tree: {}", e))?;
+            .begin_write()
+            .map_err(|e| format!("Failed to begin transaction: {}", e))?;
 
-        // Check if user exists
-        if !users_tree
-            .contains_key(user.id.as_bytes())
-            .map_err(|e| e.to_string())?
         {
-            return Err("User not found".to_string());
+            let mut users_table = write_txn
+                .open_table(USERS_TABLE)
+                .map_err(|e| format!("Failed to open users table: {}", e))?;
+
+            // Check if user exists
+            if users_table.get(user.id.as_str()).is_ok_and(|v| v.is_none()) {
+                return Err("User not found".to_string());
+            }
+
+            let serialized = Self::serialize_user(&user);
+
+            users_table
+                .insert(user.id.as_str(), serialized.as_str())
+                .map_err(|e| format!("Failed to update user: {}", e))?;
         }
 
-        let stored_user = StoredUser::from(user.clone());
-        let encoded = bincode::encode_to_vec(&stored_user, bincode::config::standard())
-            .map_err(|e| format!("Failed to encode user: {}", e))?;
-
-        users_tree
-            .insert(user.id.as_bytes(), encoded.as_slice())
-            .map_err(|e| format!("Failed to update user: {}", e))?;
+        write_txn
+            .commit()
+            .map_err(|e| format!("Failed to commit transaction: {}", e))?;
 
         info!(user_id = %user.id, "User updated in database");
 
@@ -159,12 +173,6 @@ impl UserRepository {
     }
 
     pub async fn update_password(&self, id: &str, new_password_hash: &str) -> Result<(), String> {
-        let users_tree = self
-            .db
-            .db
-            .open_tree(USERS_TREE)
-            .map_err(|e| format!("Failed to open users tree: {}", e))?;
-
         // Get existing user
         let mut user = self
             .get_by_id(id)
@@ -174,13 +182,27 @@ impl UserRepository {
         // Update password hash
         user.password_hash = new_password_hash.to_string();
 
-        let stored_user = StoredUser::from(user);
-        let encoded = bincode::encode_to_vec(&stored_user, bincode::config::standard())
-            .map_err(|e| format!("Failed to encode user: {}", e))?;
+        let write_txn = self
+            .db
+            .db
+            .begin_write()
+            .map_err(|e| format!("Failed to begin transaction: {}", e))?;
 
-        users_tree
-            .insert(id.as_bytes(), encoded.as_slice())
-            .map_err(|e| format!("Failed to update password: {}", e))?;
+        {
+            let mut users_table = write_txn
+                .open_table(USERS_TABLE)
+                .map_err(|e| format!("Failed to open users table: {}", e))?;
+
+            let serialized = Self::serialize_user(&user);
+
+            users_table
+                .insert(id, serialized.as_str())
+                .map_err(|e| format!("Failed to update password: {}", e))?;
+        }
+
+        write_txn
+            .commit()
+            .map_err(|e| format!("Failed to commit transaction: {}", e))?;
 
         info!(user_id = %id, "User password updated in database");
 
@@ -189,35 +211,44 @@ impl UserRepository {
 
     #[allow(dead_code)]
     pub async fn delete(&self, id: &str) -> Result<bool, String> {
-        let users_tree = self
-            .db
-            .db
-            .open_tree(USERS_TREE)
-            .map_err(|e| format!("Failed to open users tree: {}", e))?;
-
-        let email_index = self
-            .db
-            .db
-            .open_tree(EMAIL_INDEX_TREE)
-            .map_err(|e| format!("Failed to open email index: {}", e))?;
-
         // Get user to find email before deleting
-        if let Some(user) = self.get_by_id(id).await? {
+        let user = match self.get_by_id(id).await? {
+            Some(u) => u,
+            None => return Ok(false),
+        };
+
+        let write_txn = self
+            .db
+            .db
+            .begin_write()
+            .map_err(|e| format!("Failed to begin transaction: {}", e))?;
+
+        {
+            let mut users_table = write_txn
+                .open_table(USERS_TABLE)
+                .map_err(|e| format!("Failed to open users table: {}", e))?;
+
+            let mut email_index = write_txn
+                .open_table(EMAIL_INDEX_TABLE)
+                .map_err(|e| format!("Failed to open email index: {}", e))?;
+
             // Delete from email index
             email_index
-                .remove(user.email.as_bytes())
+                .remove(user.email.as_str())
                 .map_err(|e| format!("Failed to remove email index: {}", e))?;
 
             // Delete user
-            users_tree
-                .remove(id.as_bytes())
+            users_table
+                .remove(id)
                 .map_err(|e| format!("Failed to delete user: {}", e))?;
-
-            info!(user_id = %id, "User deleted from database");
-            Ok(true)
-        } else {
-            Ok(false)
         }
+
+        write_txn
+            .commit()
+            .map_err(|e| format!("Failed to commit transaction: {}", e))?;
+
+        info!(user_id = %id, "User deleted from database");
+        Ok(true)
     }
 }
 
