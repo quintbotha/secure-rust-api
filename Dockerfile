@@ -45,9 +45,8 @@ USER nonroot:nonroot
 # Expose port
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD ["/usr/local/bin/secure-rust-api", "--version"] || exit 1
+# Note: Health checks should be done at container orchestration level (docker-compose, k8s)
+# Distroless images don't include health check tools
 
 # Run the application
 ENTRYPOINT ["/usr/local/bin/secure-rust-api"]
