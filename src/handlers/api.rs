@@ -355,7 +355,10 @@ pub async fn change_password(
     };
 
     // Update password in database
-    if let Err(e) = user_repo.update_password(&claims.sub, &new_password_hash).await {
+    if let Err(e) = user_repo
+        .update_password(&claims.sub, &new_password_hash)
+        .await
+    {
         warn!(error = %e, "Failed to update password");
         return HttpResponse::InternalServerError().json(serde_json::json!({
             "error": "Failed to update password"

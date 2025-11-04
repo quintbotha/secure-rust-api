@@ -97,8 +97,7 @@ async fn main() -> std::io::Result<()> {
 
     // Initialize database
     let db_path = env::var("DB_PATH").unwrap_or_else(|_| "./data/sled.db".to_string());
-    let database = Database::new(&db_path)
-        .expect("Failed to initialize database");
+    let database = Database::new(&db_path).expect("Failed to initialize database");
     info!(db_path = %db_path, "Database initialized");
 
     let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
@@ -123,7 +122,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         let user_repo = UserRepository::new(database.clone());
-        
+
         // Configure CORS
         let cors = Cors::default()
             .allow_any_origin()

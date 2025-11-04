@@ -64,7 +64,10 @@ impl UserRepository {
             .map_err(|e| format!("Failed to open email index: {}", e))?;
 
         // Check if email already exists
-        if email_index.contains_key(user.email.as_bytes()).map_err(|e| e.to_string())? {
+        if email_index
+            .contains_key(user.email.as_bytes())
+            .map_err(|e| e.to_string())?
+        {
             return Err("Email already exists".to_string());
         }
 
@@ -98,8 +101,9 @@ impl UserRepository {
             .map_err(|e| format!("Failed to get user: {}", e))?
         {
             Some(data) => {
-                let (stored_user, _): (StoredUser, usize) = bincode::decode_from_slice(&data, bincode::config::standard())
-                    .map_err(|e| format!("Failed to decode user: {}", e))?;
+                let (stored_user, _): (StoredUser, usize) =
+                    bincode::decode_from_slice(&data, bincode::config::standard())
+                        .map_err(|e| format!("Failed to decode user: {}", e))?;
                 Ok(Some(User::from(stored_user)))
             }
             None => Ok(None),
@@ -118,8 +122,7 @@ impl UserRepository {
             .map_err(|e| format!("Failed to get email index: {}", e))?
         {
             Some(user_id) => {
-                let id = str::from_utf8(&user_id)
-                    .map_err(|e| format!("Invalid user ID: {}", e))?;
+                let id = str::from_utf8(&user_id).map_err(|e| format!("Invalid user ID: {}", e))?;
                 self.get_by_id(id).await
             }
             None => Ok(None),
@@ -135,7 +138,10 @@ impl UserRepository {
             .map_err(|e| format!("Failed to open users tree: {}", e))?;
 
         // Check if user exists
-        if !users_tree.contains_key(user.id.as_bytes()).map_err(|e| e.to_string())? {
+        if !users_tree
+            .contains_key(user.id.as_bytes())
+            .map_err(|e| e.to_string())?
+        {
             return Err("User not found".to_string());
         }
 
@@ -160,7 +166,9 @@ impl UserRepository {
             .map_err(|e| format!("Failed to open users tree: {}", e))?;
 
         // Get existing user
-        let mut user = self.get_by_id(id).await?
+        let mut user = self
+            .get_by_id(id)
+            .await?
             .ok_or_else(|| "User not found".to_string())?;
 
         // Update password hash

@@ -78,9 +78,9 @@ where
             let res = HttpResponse::TooManyRequests().json(serde_json::json!({
                 "error": "Too many requests. Please try again later."
             }));
-            return Box::pin(async move {
-                Ok(ServiceResponse::new(req, res).map_into_boxed_body())
-            });
+            return Box::pin(
+                async move { Ok(ServiceResponse::new(req, res).map_into_boxed_body()) },
+            );
         }
 
         let fut = self.service.call(req);
