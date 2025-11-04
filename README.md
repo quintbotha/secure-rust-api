@@ -52,9 +52,10 @@ secure-rust-api/
 
 ### Installation
 
-1. **Clone or navigate to the project**:
+1. **Clone the repository**:
    ```bash
-   cd ~/Code/playground/secure-rust-api
+   git clone https://github.com/quintbotha/secure-rust-api.git
+   cd secure-rust-api
    ```
 
 2. **Create environment file**:
