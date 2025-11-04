@@ -37,7 +37,9 @@ This project is a reference implementation and should not be used directly in pr
 - **argon2**: Password hashing
 - **serde**: Serialization/deserialization
 - **chrono**: Date and time handling
-- **dotenv**: Environment variable management
+- **dotenvy**: Environment variable management
+- **sled**: Embedded database
+- **governor**: Rate limiting
 
 ## 📁 Project Structure
 

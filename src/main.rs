@@ -8,7 +8,7 @@ use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
 use db::user_repository::UserRepository;
 use db::Database;
-use dotenv::dotenv;
+use dotenvy::dotenv;
 use middleware::rate_limit::RateLimitMiddleware;
 use std::env;
 use tracing::info;
