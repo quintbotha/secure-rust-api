@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+.github
+
+# Rust
+target/
+**/*.rs.bk
+*.pdb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+
+# Database
+data/
+*.db
+*.log
+
+# Documentation
+README.md
+LICENSE
+WARP.md
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# CI/CD
+.github/
+
+# OS
+.DS_Store
+Thumbs.db

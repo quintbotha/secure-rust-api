@@ -355,7 +355,33 @@ cargo clippy
 cargo test
 ```
 
+## 🐳 Docker Deployment
+
+### Quick Start
+
+```bash
+# Build and start with Docker Compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f api
+
+# Stop services
+docker-compose down
+```
+
+See [DOCKER.md](DOCKER.md) for complete Docker deployment guide.
+
+### Features
+- 🔒 Distroless base image (minimal attack surface)
+- 👤 Non-root user (UID 65532)
+- 📦 Multi-stage build (~50MB final image)
+- 🔍 Health checks
+- 💾 Persistent volumes
+
 ## 🚀 Production Deployment
+
+### Native Binary
 
 1. Build optimized release binary:
    ```bash
@@ -369,6 +395,14 @@ cargo test
 4. Use a process manager (systemd, PM2, etc.)
 
 5. Deploy behind a reverse proxy (nginx, Caddy)
+
+### Docker Production
+
+See [DOCKER.md](DOCKER.md) for:
+- Reverse proxy setup
+- Resource limits
+- Security hardening
+- Backup/restore procedures
 
 ## 📄 License
 
