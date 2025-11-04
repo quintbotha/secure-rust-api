@@ -31,18 +31,12 @@ impl UserRepository {
             serde_json::from_str(data).map_err(|e| format!("Failed to parse JSON: {}", e))?;
 
         Ok(User {
-            id: json["id"]
-                .as_str()
-                .ok_or("Missing id")?
-                .to_string(),
+            id: json["id"].as_str().ok_or("Missing id")?.to_string(),
             username: json["username"]
                 .as_str()
                 .ok_or("Missing username")?
                 .to_string(),
-            email: json["email"]
-                .as_str()
-                .ok_or("Missing email")?
-                .to_string(),
+            email: json["email"].as_str().ok_or("Missing email")?.to_string(),
             password_hash: json["password_hash"]
                 .as_str()
                 .ok_or("Missing password_hash")?
@@ -72,7 +66,10 @@ impl UserRepository {
                 .map_err(|e| format!("Failed to open email index: {}", e))?;
 
             // Check if email already exists
-            if email_index.get(user.email.as_str()).is_ok_and(|v| v.is_some()) {
+            if email_index
+                .get(user.email.as_str())
+                .is_ok_and(|v| v.is_some())
+            {
                 return Err("Email already exists".to_string());
             }
 
