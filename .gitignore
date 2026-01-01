@@ -27,9 +27,6 @@ Thumbs.db
 debug/
 *.pdb
 
-# Warp AI files
-WARP.md
-
 # Database
 data/
 *.log
